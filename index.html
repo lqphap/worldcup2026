@@ -20,22 +20,17 @@
             </tr>
         </thead>
         <tbody id="table-body">
-            <tr>
-                <td colspan="4">Loading data...</td>
-            </tr>
+            <!-- Data is injected directly via server side simulation -->
         </tbody>
     </table>
 
     <script>
-        async function fetchWorldCupHTML() {
-            const jsonUrl = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
-            try {
-                const response = await fetch(jsonUrl);
-                const data = await response.json();
-                const tbody = document.getElementById('table-body');
+        // Directly fetch the text stream to guarantee Google Sheets catches the payload 
+        fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json')
+            .then(res => res.json())
+            .then(data => {
                 let htmlRows = '';
-
-                if (data.matches && data.matches.length > 0) {
+                if(data.matches) {
                     data.matches.forEach(match => {
                         htmlRows += `<tr>
                             <td>${match.date || ''}</td>
@@ -44,13 +39,9 @@
                             <td>${match.team2 || 'TBD'}</td>
                         </tr>`;
                     });
-                    tbody.innerHTML = htmlRows;
+                    document.getElementById('table-body').innerHTML = htmlRows;
                 }
-            } catch (error) {
-                document.getElementById('table-body').innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
-            }
-        }
-        fetchWorldCupHTML();
+            });
     </script>
 </body>
 </html>
