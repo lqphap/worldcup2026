@@ -2,86 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OpenFootball World Cup 2026 Data Engine</title>
-    <style>
-        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; }
-        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-        th { background-color: #eaecf0; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f8f9fa; }
-    </style>
+    <title>OpenFootball CSV Export</title>
 </head>
-<body>
-    <div id="status">Reading JSON dataset...</div>
-    <table id="match-table">
-        <thead>
-            <tr>
-                <th>Round/Stage</th>
-                <th>Match Date</th>
-                <th>Team 1</th>
-                <th>Score 1</th>
-                <th>Score 2</th>
-                <th>Team 2</th>
-            </tr>
-        </thead>
-        <tbody id="table-body">
-            <tr>
-                <td colspan="6">Loading data tables...</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <script>
-        async function fetchWorldCupJSON() {
-            // Using the raw GitHub endpoint to bypass the GitHub UI layout wrapper
-            const rawJsonUrl = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
+<body><pre id="csv-output">Loading data...</pre><script>
+    async function fetchWorldCupCSV() {
+        const jsonUrl = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
+        try {
+            const response = await fetch(jsonUrl);
+            if (!response.ok) throw new Error('Fetch failed');
+            const data = await response.json();
             
-            try {
-                const response = await fetch(rawJsonUrl);
-                if (!response.ok) throw new Error('Failed to fetch file from GitHub repository.');
+            // CSV Headers mapping your exact requested parameters
+            let csvContent = "Date,Time,Team 1,Team 2\n";
+
+            // OpenFootball maps matches in a root array for this file
+            if (data.matches && data.matches.length > 0) {
+                data.matches.forEach(match => {
+                    const matchDate = match.date || '';
+                    const matchTime = match.time || '';
+                    const team1 = `"${(match.team1 || 'TBD').replace(/"/g, '""')}"`;
+                    const team2 = `"${(match.team2 || 'TBD').replace(/"/g, '""')}"`;
+
+                    csvContent += `${matchDate},${matchTime},${team1},${team2}\n`;
+                });
                 
-                const data = await response.json();
-                const tbody = document.getElementById('table-body');
-                let htmlRows = '';
-
-                // OpenFootball matches are sorted under separate rounds arrays
-                if (data.rounds && data.rounds.length > 0) {
-                    data.rounds.forEach(round => {
-                        const roundName = round.name;
-                        
-                        if (round.matches && round.matches.length > 0) {
-                            round.matches.forEach(match => {
-                                const matchDate = match.date || '';
-                                const team1 = match.team1 || 'TBD';
-                                const team2 = match.team2 || 'TBD';
-                                
-                                // Parse handling if scores haven't been filled out yet
-                                const score1 = match.score1 !== undefined && match.score1 !== null ? match.score1 : '-';
-                                const score2 = match.score2 !== undefined && match.score2 !== null ? match.score2 : '-';
-
-                                htmlRows += `<tr>
-                                    <td>${roundName}</td>
-                                    <td>${matchDate}</td>
-                                    <td>${team1}</td>
-                                    <td>${score1}</td>
-                                    <td>${score2}</td>
-                                    <td>${team2}</td>
-                                </tr>`;
-                            });
-                        }
-                    });
-                    
-                    tbody.innerHTML = htmlRows;
-                    document.getElementById('status').innerText = "Data Sync Complete: " + data.name;
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="6">No match schedule configurations found inside the file structure.</td></tr>';
-                }
-            } catch (error) {
-                document.getElementById('status').innerText = "Error: " + error.message;
-                document.getElementById('table-body').innerHTML = `<tr><td colspan="6" style="color:red;">Failed execution. Check configuration source path.</td></tr>`;
+                document.getElementById('csv-output').textContent = csvContent.trim();
+            } else {
+                document.getElementById('csv-output').textContent = "Error,No matches found in JSON structure";
             }
+        } catch (error) {
+            document.getElementById('csv-output').textContent = "Error,Failed to process raw data source";
         }
-
-        fetchWorldCupJSON();
-    </script>
-</body>
+    }
+    fetchWorldCupCSV();
+</script></body>
 </html>
