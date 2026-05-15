@@ -2,38 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OpenFootball CSV Export</title>
+    <title>OpenFootball World Cup 2026 Table</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+    </style>
 </head>
-<body><pre id="csv-output">Loading data...</pre><script>
-    async function fetchWorldCupCSV() {
-        const jsonUrl = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
-        try {
-            const response = await fetch(jsonUrl);
-            if (!response.ok) throw new Error('Fetch failed');
-            const data = await response.json();
-            
-            // CSV Headers mapping your exact requested parameters
-            let csvContent = "Date,Time,Team 1,Team 2\n";
+<body>
+    <table id="match-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Team 1</th>
+                <th>Team 2</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            <tr>
+                <td colspan="4">Loading data...</td>
+            </tr>
+        </tbody>
+    </table>
 
-            // OpenFootball maps matches in a root array for this file
-            if (data.matches && data.matches.length > 0) {
-                data.matches.forEach(match => {
-                    const matchDate = match.date || '';
-                    const matchTime = match.time || '';
-                    const team1 = `"${(match.team1 || 'TBD').replace(/"/g, '""')}"`;
-                    const team2 = `"${(match.team2 || 'TBD').replace(/"/g, '""')}"`;
+    <script>
+        async function fetchWorldCupHTML() {
+            const jsonUrl = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
+            try {
+                const response = await fetch(jsonUrl);
+                const data = await response.json();
+                const tbody = document.getElementById('table-body');
+                let htmlRows = '';
 
-                    csvContent += `${matchDate},${matchTime},${team1},${team2}\n`;
-                });
-                
-                document.getElementById('csv-output').textContent = csvContent.trim();
-            } else {
-                document.getElementById('csv-output').textContent = "Error,No matches found in JSON structure";
+                if (data.matches && data.matches.length > 0) {
+                    data.matches.forEach(match => {
+                        htmlRows += `<tr>
+                            <td>${match.date || ''}</td>
+                            <td>${match.time || ''}</td>
+                            <td>${match.team1 || 'TBD'}</td>
+                            <td>${match.team2 || 'TBD'}</td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = htmlRows;
+                }
+            } catch (error) {
+                document.getElementById('table-body').innerHTML = '<tr><td colspan="4">Error loading data</td></tr>';
             }
-        } catch (error) {
-            document.getElementById('csv-output').textContent = "Error,Failed to process raw data source";
         }
-    }
-    fetchWorldCupCSV();
-</script></body>
+        fetchWorldCupHTML();
+    </script>
+</body>
 </html>
