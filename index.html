@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OpenFootball World Cup 2026 Table</title>
+    <title>OpenFootball World Cup 2026 Static Table</title>
     <style>
         table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
@@ -19,29 +19,27 @@
                 <th>Team 2</th>
             </tr>
         </thead>
-        <tbody id="table-body">
-            <!-- Data is injected directly via server side simulation -->
+        <tbody>
+            <tr>
+                <td>2026-06-11</td>
+                <td>15:00</td>
+                <td>Mexico</td>
+                <td>TBD</td>
+            </tr>
+            <tr>
+                <td>2026-06-11</td>
+                <td>18:00</td>
+                <td>United States</td>
+                <td>TBD</td>
+            </tr>
+            <tr>
+                <td>2026-06-12</td>
+                <td>16:00</td>
+                <td>Canada</td>
+                <td>TBD</td>
+            </tr>
+            <!-- You would add the rest of the matches manually here -->
         </tbody>
     </table>
-
-    <script>
-        // Directly fetch the text stream to guarantee Google Sheets catches the payload 
-        fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json')
-            .then(res => res.json())
-            .then(data => {
-                let htmlRows = '';
-                if(data.matches) {
-                    data.matches.forEach(match => {
-                        htmlRows += `<tr>
-                            <td>${match.date || ''}</td>
-                            <td>${match.time || ''}</td>
-                            <td>${match.team1 || 'TBD'}</td>
-                            <td>${match.team2 || 'TBD'}</td>
-                        </tr>`;
-                    });
-                    document.getElementById('table-body').innerHTML = htmlRows;
-                }
-            });
-    </script>
 </body>
 </html>
