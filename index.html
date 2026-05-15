@@ -2,62 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>FBref World Cup Data Proxy</title>
+    <title>Wikipedia 2026 World Cup Scraper</title>
     <style>
-        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; }
-        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-        th { background-color: #f4f4f4; font-weight: bold; }
-        .stats_table { margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px; }
+        th, td { border: 1px solid #aaa; padding: 8px; text-align: center; }
+        th { background-color: #eaecf0; font-weight: bold; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .caption { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; font-family: sans-serif; }
     </style>
 </head>
 <body>
-    <div id="status">Fetching live tables from FBref...</div>
-    <div id="table-container"></div>
+    <div class="caption">2026 FIFA World Cup: Ranking of third-placed teams</div>
+    <div id="table-output">Loading live data from Wikipedia...</div>
 
     <script>
-        async function fetchFBref() {
-            const targetUrl = 'https://fbref.com/en/comps/1/World-Cup-Stats';
-            // Switching to a more reliable, high-performance CORS proxy
-            const proxyUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl);
-
+        async function getWikiData() {
+            const url = 'https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup&format=json&origin=*';
+            
             try {
-                const response = await fetch(proxyUrl);
-                if (!response.ok) throw new Error('Proxy server error or rate limited');
+                const response = await fetch(url);
+                const data = await response.json();
+                const htmlContent = data.parse.text['*'];
                 
-                const htmlText = await response.text();
-                
-                // Parse the text string into clean HTML nodes
+                // Create a temporary element to parse the HTML string
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlText, 'text/html');
+                const doc = parser.parseFromString(htmlContent, 'text/html');
                 
-                // Find all tables on the page with FBref's statistical layout class
-                const fbrefTables = doc.querySelectorAll('table.stats_table');
+                // Wikipedia marks this specific table with a specific style/class
+                // We search for the table that follows the "Ranking of third-placed teams" ID
+                const sectionSpan = doc.getElementById('Ranking_of_third-placed_teams');
+                const table = sectionSpan.parentElement.nextElementSibling;
+                
+                // If the next element isn't the table, find the nearest table after that heading
+                const targetTable = table.tagName === 'TABLE' ? table : sectionSpan.parentElement.nextAll('table')[0];
 
-                if (fbrefTables.length > 0) {
-                    const container = document.getElementById('table-container');
-                    container.innerHTML = ''; // Wipe out previous errors
-
-                    // Grab the first 3 primary data tables (Group stage standings, stats, etc.)
-                    // and append them sequentially so Google Sheets can pick its preferred index.
-                    for (let i = 0; i < Math.min(fbrefTables.length, 3); i++) {
-                        let currentTable = fbrefTables[i];
-                        
-                        // Clean up hyperlinked text so Google Sheets reads raw strings
-                        currentTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
-                        
-                        container.appendChild(currentTable);
-                    }
+                if (targetTable) {
+                    // Clean up: Remove Wikipedia's edit links and reference tags [1], [a], etc.
+                    targetTable.querySelectorAll('.mw-editsection, .reference').forEach(el => el.remove());
+                    // Remove links but keep text
+                    targetTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
                     
-                    document.getElementById('status').innerHTML = "Data Successfully Synced: " + new Date().toLocaleTimeString();
+                    document.getElementById('table-output').innerHTML = targetTable.outerHTML;
                 } else {
-                    document.getElementById('status').innerText = "Target tables not found on the page structure.";
+                    document.getElementById('table-output').innerText = "Table not found. Wikipedia layout may have changed.";
                 }
             } catch (error) {
-                document.getElementById('status').innerText = "Sync Failed: " + error.message + ". Retrying shortly...";
+                document.getElementById('table-output').innerText = "Error fetching data: " + error.message;
             }
         }
 
-        fetchFBref();
+        getWikiData();
     </script>
 </body>
 </html>
