@@ -4,44 +4,56 @@
     <meta charset="UTF-8">
     <title>FBref World Cup Data Proxy</title>
     <style>
-        table { border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 12px; }
-        th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
-        th { background-color: #f4f4f4; }
+        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+        th { background-color: #f4f4f4; font-weight: bold; }
+        .stats_table { margin-bottom: 20px; }
     </style>
 </head>
 <body>
-    <div id="status">Fetching data from FBref...</div>
+    <div id="status">Fetching live tables from FBref...</div>
     <div id="table-container"></div>
 
     <script>
         async function fetchFBref() {
-            // We use a CORS proxy to bypass FBref's block
             const targetUrl = 'https://fbref.com/en/comps/1/World-Cup-Stats';
-            const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
+            // Switching to a more reliable, high-performance CORS proxy
+            const proxyUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(targetUrl);
 
             try {
                 const response = await fetch(proxyUrl);
-                const data = await response.json();
+                if (!response.ok) throw new Error('Proxy server error or rate limited');
                 
-                // Use DOMParser to read the FBref HTML
+                const htmlText = await response.text();
+                
+                // Parse the text string into clean HTML nodes
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(data.contents, 'text/html');
+                const doc = parser.parseFromString(htmlText, 'text/html');
                 
-                // Identify the specific table (usually 'results12345_overall' for group stage)
-                // We look for the first table with class 'stats_table'
-                const fbrefTable = doc.querySelector('.stats_table');
+                // Find all tables on the page with FBref's statistical layout class
+                const fbrefTables = doc.querySelectorAll('table.stats_table');
 
-                if (fbrefTable) {
-                    // Clean up links and formatting to make it "Sheet-friendly"
-                    fbrefTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
+                if (fbrefTables.length > 0) {
+                    const container = document.getElementById('table-container');
+                    container.innerHTML = ''; // Wipe out previous errors
+
+                    // Grab the first 3 primary data tables (Group stage standings, stats, etc.)
+                    // and append them sequentially so Google Sheets can pick its preferred index.
+                    for (let i = 0; i < Math.min(fbrefTables.length, 3); i++) {
+                        let currentTable = fbrefTables[i];
+                        
+                        // Clean up hyperlinked text so Google Sheets reads raw strings
+                        currentTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
+                        
+                        container.appendChild(currentTable);
+                    }
                     
-                    document.getElementById('table-container').appendChild(fbrefTable);
-                    document.getElementById('status').innerHTML = "Data Updated: " + new Date().toLocaleTimeString();
+                    document.getElementById('status').innerHTML = "Data Successfully Synced: " + new Date().toLocaleTimeString();
                 } else {
-                    document.getElementById('status').innerText = "Could not find the table on FBref.";
+                    document.getElementById('status').innerText = "Target tables not found on the page structure.";
                 }
             } catch (error) {
-                document.getElementById('status').innerText = "Error: " + error.message;
+                document.getElementById('status').innerText = "Sync Failed: " + error.message + ". Retrying shortly...";
             }
         }
 
