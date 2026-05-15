@@ -2,73 +2,86 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Wikipedia 2026 World Cup Scraper</title>
+    <title>OpenFootball World Cup 2026 Data Engine</title>
     <style>
-        table { border-collapse: collapse; width: 100%; font-family: sans-serif; font-size: 14px; }
-        th, td { border: 1px solid #aaa; padding: 8px; text-align: center; }
+        table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 13px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
         th { background-color: #eaecf0; font-weight: bold; }
         tr:nth-child(even) { background-color: #f8f9fa; }
-        .caption { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; font-family: sans-serif; }
     </style>
 </head>
 <body>
-    <div class="caption">2026 FIFA World Cup: Ranking of third-placed teams</div>
-    <div id="table-output">Loading live data from Wikipedia...</div>
+    <div id="status">Reading JSON dataset...</div>
+    <table id="match-table">
+        <thead>
+            <tr>
+                <th>Round/Stage</th>
+                <th>Match Date</th>
+                <th>Team 1</th>
+                <th>Score 1</th>
+                <th>Score 2</th>
+                <th>Team 2</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            <tr>
+                <td colspan="6">Loading data tables...</td>
+            </tr>
+        </tbody>
+    </table>
 
     <script>
-        async function getWikiData() {
-            const url = 'https://en.wikipedia.org/w/api.php?action=parse&page=2026_FIFA_World_Cup&format=json&origin=*';
+        async function fetchWorldCupJSON() {
+            // Using the raw GitHub endpoint to bypass the GitHub UI layout wrapper
+            const rawJsonUrl = 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json';
             
             try {
-                const response = await fetch(url);
+                const response = await fetch(rawJsonUrl);
+                if (!response.ok) throw new Error('Failed to fetch file from GitHub repository.');
+                
                 const data = await response.json();
-                const htmlContent = data.parse.text['*'];
-                
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlContent, 'text/html');
-                
-                // Find the specific section anchor
-                const sectionSpan = doc.getElementById('Ranking_of_third-placed_teams');
-                
-                if (sectionSpan) {
-                    // Start looking at the elements immediately following the header container
-                    let currentElement = sectionSpan.parentElement.nextElementSibling;
-                    let targetTable = null;
+                const tbody = document.getElementById('table-body');
+                let htmlRows = '';
 
-                    // Loop through elements until we hit the table
-                    while (currentElement) {
-                        if (currentElement.tagName === 'TABLE') {
-                            targetTable = currentElement;
-                            break;
-                        }
-                        // If it's a wrapper div, check if the table is hidden inside it
-                        let nestedTable = currentElement.querySelector('table');
-                        if (nestedTable) {
-                            targetTable = nestedTable;
-                            break;
-                        }
-                        currentElement = currentElement.nextElementSibling;
-                    }
-
-                    if (targetTable) {
-                        // Clean up: Remove Wikipedia's edit links and reference tags [1], [a], etc.
-                        targetTable.querySelectorAll('.mw-editsection, .reference').forEach(el => el.remove());
-                        // Remove links but keep text
-                        targetTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
+                // OpenFootball matches are sorted under separate rounds arrays
+                if (data.rounds && data.rounds.length > 0) {
+                    data.rounds.forEach(round => {
+                        const roundName = round.name;
                         
-                        document.getElementById('table-output').innerHTML = targetTable.outerHTML;
-                    } else {
-                        document.getElementById('table-output').innerText = "Table not found under the heading.";
-                    }
+                        if (round.matches && round.matches.length > 0) {
+                            round.matches.forEach(match => {
+                                const matchDate = match.date || '';
+                                const team1 = match.team1 || 'TBD';
+                                const team2 = match.team2 || 'TBD';
+                                
+                                // Parse handling if scores haven't been filled out yet
+                                const score1 = match.score1 !== undefined && match.score1 !== null ? match.score1 : '-';
+                                const score2 = match.score2 !== undefined && match.score2 !== null ? match.score2 : '-';
+
+                                htmlRows += `<tr>
+                                    <td>${roundName}</td>
+                                    <td>${matchDate}</td>
+                                    <td>${team1}</td>
+                                    <td>${score1}</td>
+                                    <td>${score2}</td>
+                                    <td>${team2}</td>
+                                </tr>`;
+                            });
+                        }
+                    });
+                    
+                    tbody.innerHTML = htmlRows;
+                    document.getElementById('status').innerText = "Data Sync Complete: " + data.name;
                 } else {
-                    document.getElementById('table-output').innerText = "Could not find the 'Ranking of third-placed teams' section.";
+                    tbody.innerHTML = '<tr><td colspan="6">No match schedule configurations found inside the file structure.</td></tr>';
                 }
             } catch (error) {
-                document.getElementById('table-output').innerText = "Error fetching data: " + error.message;
+                document.getElementById('status').innerText = "Error: " + error.message;
+                document.getElementById('table-body').innerHTML = `<tr><td colspan="6" style="color:red;">Failed execution. Check configuration source path.</td></tr>`;
             }
         }
 
-        getWikiData();
+        fetchWorldCupJSON();
     </script>
 </body>
 </html>
