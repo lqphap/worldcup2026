@@ -24,27 +24,44 @@
                 const data = await response.json();
                 const htmlContent = data.parse.text['*'];
                 
-                // Create a temporary element to parse the HTML string
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(htmlContent, 'text/html');
                 
-                // Wikipedia marks this specific table with a specific style/class
-                // We search for the table that follows the "Ranking of third-placed teams" ID
+                // Find the specific section anchor
                 const sectionSpan = doc.getElementById('Ranking_of_third-placed_teams');
-                const table = sectionSpan.parentElement.nextElementSibling;
                 
-                // If the next element isn't the table, find the nearest table after that heading
-                const targetTable = table.tagName === 'TABLE' ? table : sectionSpan.parentElement.nextAll('table')[0];
+                if (sectionSpan) {
+                    // Start looking at the elements immediately following the header container
+                    let currentElement = sectionSpan.parentElement.nextElementSibling;
+                    let targetTable = null;
 
-                if (targetTable) {
-                    // Clean up: Remove Wikipedia's edit links and reference tags [1], [a], etc.
-                    targetTable.querySelectorAll('.mw-editsection, .reference').forEach(el => el.remove());
-                    // Remove links but keep text
-                    targetTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
-                    
-                    document.getElementById('table-output').innerHTML = targetTable.outerHTML;
+                    // Loop through elements until we hit the table
+                    while (currentElement) {
+                        if (currentElement.tagName === 'TABLE') {
+                            targetTable = currentElement;
+                            break;
+                        }
+                        // If it's a wrapper div, check if the table is hidden inside it
+                        let nestedTable = currentElement.querySelector('table');
+                        if (nestedTable) {
+                            targetTable = nestedTable;
+                            break;
+                        }
+                        currentElement = currentElement.nextElementSibling;
+                    }
+
+                    if (targetTable) {
+                        // Clean up: Remove Wikipedia's edit links and reference tags [1], [a], etc.
+                        targetTable.querySelectorAll('.mw-editsection, .reference').forEach(el => el.remove());
+                        // Remove links but keep text
+                        targetTable.querySelectorAll('a').forEach(a => a.replaceWith(a.textContent));
+                        
+                        document.getElementById('table-output').innerHTML = targetTable.outerHTML;
+                    } else {
+                        document.getElementById('table-output').innerText = "Table not found under the heading.";
+                    }
                 } else {
-                    document.getElementById('table-output').innerText = "Table not found. Wikipedia layout may have changed.";
+                    document.getElementById('table-output').innerText = "Could not find the 'Ranking of third-placed teams' section.";
                 }
             } catch (error) {
                 document.getElementById('table-output').innerText = "Error fetching data: " + error.message;
